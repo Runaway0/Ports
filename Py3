@@ -1,0 +1,33 @@
+import socket
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+def TCP_connect(ip, port_number, delay, output):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.settimeout(delay)
+        try:
+            sock.connect((ip, port_number))
+            output[port_number] = 'Listening'
+        except (ConnectionRefusedError, TimeoutError):
+            output[port_number] = ''
+
+def scan_ports(host_ip, delay, start_port=1, end_port=10000, max_workers=100):
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        output = {}
+        futures = [executor.submit(TCP_connect, host_ip, port, delay, output) for port in range(start_port, end_port + 1)]
+        for future in futures:
+            future.result()  # Wait for all threads to complete
+
+    # Printing listening ports from small to large
+    for port, status in sorted(output.items()):
+        if status == 'Listening':
+            print(f"{port}: {status}")
+
+def main():
+    host_ip = input("Enter host IP: ")
+    delay = int(input("Enter the timeout value in seconds: "))
+    scan_ports(host_ip, delay)
+
+if __name__ == "__main__":
+    main()
